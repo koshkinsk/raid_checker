@@ -1,0 +1,69 @@
+#!/usr/bin/env python
+# Consider running under root user
+
+from __future__ import print_function
+import re
+import sys
+import subprocess
+
+MDSTAT = '/proc/mdstat'
+PARTITIONS = '/proc/partitions'
+
+DEV = r'([a-z]+[\d]*)'
+ARR_LEG_DEV = r'{0}\[\d\]'.format(DEV)
+
+failed_dev_re = re.compile(r'{0}\(F\)'.format(ARR_LEG_DEV))
+arr_dev_re = re.compile(r'^(md[\d])')
+arr_leg_re = re.compile(ARR_LEG_DEV)
+partition_re = re.compile(r'{0}$'.format(DEV))
+
+def mdadm(op, arr, hdd):
+    args = []
+    if op == 'remove':
+        args.append('-r')
+    elif op == 'add':
+        args.append('-a')
+
+    return subprocess.call('mdadm {args} /dev/{arr} /dev/{hdd}'.format(
+        args=' '.join(args), arr=arr, hdd=hdd), shell=True)
+
+def mdstat_iter():
+    with open(MDSTAT, 'r') as f:
+        for line in f:
+            yield line.strip()
+
+def partitions_iter():
+    with open(PARTITIONS, 'r') as f:
+        for line_num, line in enumerate(f):
+            # Skip first "header" line
+            if line_num == 0:
+                continue
+
+            m = partition_re.search(line.strip())
+            if m:
+                yield m.group()
+
+def get_used_hdds():
+    used_hdds = []
+    for line in mdstat_iter():
+        if arr_dev_re.match(line):
+            used_hdds.extend(re.findall(arr_leg_re, line))
+    return used_hdds
+
+def find_failed_hdd():
+    for line in mdstat_iter():
+        m = failed_dev_re.search(line)
+        if m:
+            # (arr, hdd)
+            return (arr_dev_re.match(line)[0], m.groups()[0])
+    return None
+
+def find_hotspare_hdd():
+    used_hdds = get_used_hdds()
+    for p in partitions_iter():
+        if p not in used_hdds:
+            return p
+    return None
+
+if __name__ == '__main__':
+    print(list(partitions_iter()))

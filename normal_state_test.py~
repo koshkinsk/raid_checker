@@ -1,0 +1,23 @@
+import unittest
+from nose.tools import raises
+import raid_health
+import os
+
+ME = os.path.dirname(__file__)
+FIXTURES = os.path.join(ME, 'fixtures')
+
+
+class TestNormalState(unittest.TestCase):
+
+    def setup(self):
+        self.PARTITIONS = raid_health.PARTITIONS
+        raid_health.PARTITIONS = os.path.join(FIXTURES, 'partitions')
+        self.MDSTAT = raid_health.MDSTAT
+        raid_health.MDSTAT = os.path.join(FIXTURES, 'mdstat_normal')
+
+    def teardown(self):
+        raid_health.PARTITIONS = self.PARTITIONS
+        raid_health.MDSTAT = self.MDSTAT
+
+    def test_get_arrays(self):
+        print(raid_health.get_arrays())
