@@ -95,7 +95,7 @@ def find_hotspare_hdd():
 if __name__ == '__main__':
     failed = find_failed_hdd()
     if failed is None:
-        return
+        sys.exit(1)
 
     failed_arr, failed_hdd = failed
     print('Found failed hdd(`{0}`) in array(`{1}`)'.format(
